@@ -100,45 +100,9 @@ class MainWindow(QMainWindow):
             self.activateWindow()
 
     def closeEvent(self, event) -> None:
-        pref_action, remember = load_close_preference()
-        if remember and pref_action in ("minimize", "exit"):
-            if pref_action == "minimize":
-                event.ignore()
-                self.hide()
-            else:
-                event.accept()
-                QApplication.instance().quit()
-            return
-
-        box = QMessageBox(self)
-        box.setWindowTitle("关闭应用提示")
-        box.setText("您点击了关闭窗口按钮，请选择您希望执行的操作：")
-        box.setIcon(QMessageBox.Question)
-
-        btn_minimize = box.addButton("最小化到系统托盘", QMessageBox.AcceptRole)
-        btn_exit = box.addButton("彻底退出应用", QMessageBox.DestructiveRole)
-        btn_cancel = box.addButton("取消", QMessageBox.RejectRole)
-
-        checkbox = QCheckBox("记住我的选择，以后不再提示", box)
-        box.setCheckBox(checkbox)
-
-        box.exec_()
-
-        clicked = box.clickedButton()
-        remember_choice = checkbox.isChecked()
-
-        if clicked == btn_minimize:
-            if remember_choice:
-                save_close_preference("minimize", True)
-            event.ignore()
-            self.hide()
-        elif clicked == btn_exit:
-            if remember_choice:
-                save_close_preference("exit", True)
-            event.accept()
-            QApplication.instance().quit()
-        else:
-            event.ignore()
+        # 点击主窗口关闭按钮 (X) 时，仅隐藏主界面，右上角菜单栏托盘保持后台常驻监控与轮播
+        event.ignore()
+        self.hide()
 
     def _build_ui(self) -> None:
         root = QWidget()
