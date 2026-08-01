@@ -28,6 +28,10 @@ def main() -> None:
     dist_dir = project_root / "dist"
     build_dir = project_root / "build"
 
+    icon_icns = project_root / "assets" / "icon.icns"
+    icon_ico = project_root / "assets" / "icon.ico"
+    icon_png = project_root / "assets" / "icon.png"
+
     cmd = [
         sys.executable,
         "-m",
@@ -38,7 +42,6 @@ def main() -> None:
         "--name=AICreditLimit",
         f"--distpath={dist_dir}",
         f"--workpath={build_dir}",
-        str(entry_point),
     ]
 
     is_mac = platform.system() == "Darwin"
@@ -46,11 +49,17 @@ def main() -> None:
 
     if is_mac:
         print("\n🍎 开始构建 macOS .app bundle...")
-        cmd.extend([
-            "--osx-bundle-identifier=com.aicreditlimit.app",
-        ])
+        cmd.append("--osx-bundle-identifier=com.aicreditlimit.app")
+        if icon_icns.exists():
+            cmd.append(f"--icon={icon_icns}")
     elif is_win:
         print("\n🪟 开始构建 Windows .exe 应用...")
+        if icon_ico.exists():
+            cmd.append(f"--icon={icon_ico}")
+    elif icon_png.exists():
+        cmd.append(f"--icon={icon_png}")
+
+    cmd.append(str(entry_point))
 
     print("执行打包命令:", " ".join(cmd))
 

@@ -32,6 +32,7 @@ exe = EXE(
     target_arch=None,
     codesign_identity=None,
     entitlements_file=None,
+    icon=['/Users/hooksvue/Desktop/ai-credit-limit/assets/icon.icns'],
 )
 coll = COLLECT(
     exe,
@@ -45,6 +46,6 @@ coll = COLLECT(
 app = BUNDLE(
     coll,
     name='AICreditLimit.app',
-    icon=None,
+    icon='/Users/hooksvue/Desktop/ai-credit-limit/assets/icon.icns',
     bundle_identifier='com.aicreditlimit.app',
 )
