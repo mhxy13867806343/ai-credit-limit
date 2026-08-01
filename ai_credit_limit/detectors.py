@@ -11,7 +11,7 @@ from .antigravity_account import AntigravityAccountError, fetch_antigravity_acco
 from .claude_sessions import scan_claude_tokens
 from .codex_account import CodexAccountError, fetch_codex_account_usage, locate_codex_executable
 from .codex_sessions import scan_codex_tokens
-from .models import AppDefinition, CreditUsage, ParsedUsage, QuotaItem, UsageStatus
+from .models import AppDefinition, CreditUsage, ParsedUsage, QuotaItem, TokenUsage, UsageStatus
 from .parsers import merge_parsed_usages, parse_usage_json, parse_usage_text
 
 
@@ -128,15 +128,29 @@ def scan_apps(
     custom_apps: list[AppDefinition] | None = None,
     enabled_app_ids: set[str] | None = None,
 ) -> list[CreditUsage]:
-    apps = builtin_apps()
-    if custom_apps:
-        apps.extend(custom_apps)
+    apps = [*builtin_apps(), *(custom_apps or [])]
     if enabled_app_ids is not None:
         apps = [app for app in apps if app.app_id in enabled_app_ids]
     return [scan_app(app) for app in apps]
 
 
 def scan_app(app: AppDefinition) -> CreditUsage:
+    try:
+        return _scan_app_internal(app)
+    except Exception as exc:
+        return CreditUsage(
+            app_id=app.app_id,
+            app_name=app.name,
+            installed=False,
+            running=False,
+            status=UsageStatus.ERROR,
+            message=f"扫描异常: {exc}",
+            removable=not app.builtin,
+            details=[f"异常提醒: {exc}"],
+        )
+
+
+def _scan_app_internal(app: AppDefinition) -> CreditUsage:
     installed_paths = [path for path in app.executable_paths if _exists(path)]
     existing_search_paths = [path for path in app.search_paths if _exists(path)]
     installed = bool(installed_paths if app.executable_paths else existing_search_paths)

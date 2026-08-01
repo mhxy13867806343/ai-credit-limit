@@ -212,12 +212,10 @@ class MainWindow(QMainWindow):
         self._render_cards(usages)
 
     def _on_scan_failed(self, message: str) -> None:
-        self.status_label.setText("扫描失败")
+        self.status_label.setText("刷新受阻")
         self.refresh_button.setEnabled(True)
         self.settings_button.setEnabled(True)
-        QMessageBox.critical(self, "扫描失败", message)
-        self._clear_cards()
-        self.current_usages = []
+        QMessageBox.warning(self, "扫描提醒", f"部分刷新请求受阻:\n{message}\n\n已保留当前卡片与缓存展示。")
 
     def _on_worker_thread_finished(self) -> None:
         self.scan_running = False
