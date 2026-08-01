@@ -92,6 +92,21 @@ def main() -> None:
     res = subprocess.run(cmd)
 
     if res.returncode == 0:
+        if is_mac:
+            plist_path = dist_dir / "AICreditLimit.app" / "Contents" / "Info.plist"
+            if plist_path.exists():
+                import plistlib
+
+                try:
+                    with open(plist_path, "rb") as f:
+                        plist_data = plistlib.load(f)
+                    plist_data["LSUIElement"] = True
+                    with open(plist_path, "wb") as f:
+                        plistlib.dump(plist_data, f)
+                    print("✓ 已配置 0dcloud 同款 Info.plist [LSUIElement=True]，纯正右上角菜单栏常驻应用！")
+                except Exception as exc:
+                    print(f"提示: 修改 plist 提示 {exc}")
+
         print("\n==========================================")
         print("🎉 打包成功！产物已生成至 dist 目录:")
         if is_mac:

@@ -129,20 +129,25 @@ class MainWindow(QMainWindow):
 
     def wake_up(self) -> None:
         """Forcefully raise, restore, and focus the main window when triggered from single-instance launch or tray."""
-        self.setWindowFlags(self.windowFlags() | Qt.WindowStaysOnTopHint)
         self.showNormal()
         self.raise_()
         self.activateWindow()
-        app = QApplication.instance()
-        if app:
-            app.setActiveWindow(self)
-        QTimer.singleShot(150, self._restore_window_flags)
+        try:
+            import ctypes
+            import platform
 
-    def _restore_window_flags(self) -> None:
-        self.setWindowFlags(self.windowFlags() & ~Qt.WindowStaysOnTopHint)
-        self.showNormal()
-        self.raise_()
-        self.activateWindow()
+            if platform.system() == "Darwin":
+                objc = ctypes.cdll.LoadLibrary("libobjc.dylib")
+                objc.objc_getClass.restype = ctypes.c_void_p
+                objc.sel_registerName.restype = ctypes.c_void_p
+                objc.objc_msgSend.restype = ctypes.c_void_p
+                NSApp = objc.objc_msgSend(
+                    objc.objc_getClass(b"NSApplication"), objc.sel_registerName(b"sharedApplication")
+                )
+                sel_activate = objc.sel_registerName(b"activateIgnoringOtherApps:")
+                objc.objc_msgSend(NSApp, sel_activate, ctypes.c_bool(True))
+        except Exception:
+            pass
 
     def toggle_visibility(self) -> None:
         if self.isVisible() and not self.isMinimized():
