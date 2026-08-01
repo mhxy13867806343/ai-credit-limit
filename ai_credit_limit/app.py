@@ -100,9 +100,11 @@ class MainWindow(QMainWindow):
             self.activateWindow()
 
     def closeEvent(self, event) -> None:
-        # 点击主窗口关闭按钮 (X) 时，仅隐藏主界面，右上角菜单栏托盘保持后台常驻监控与轮播
+        # 点击主窗口关闭按钮 (X) 时，仅隐藏主界面，保证右上角菜单栏托盘保持后台常驻监控与轮播
         event.ignore()
         self.hide()
+        if hasattr(self, "tray_manager") and self.tray_manager and self.tray_manager.tray_icon:
+            self.tray_manager.tray_icon.show()
 
     def _build_ui(self) -> None:
         root = QWidget()

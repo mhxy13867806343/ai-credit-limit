@@ -20,7 +20,9 @@ class SystemTrayManager(QObject):
         self._usages: list[CreditUsage] = []
         self._current_index = 0
 
-        self.tray_icon = QSystemTrayIcon(self)
+        # 将 QSystemTrayIcon 挂载在全局 QApplication 上，确保与主窗口完全解耦，主窗口关闭/隐藏时托盘绝不消失
+        app_instance = QApplication.instance()
+        self.tray_icon = QSystemTrayIcon(app_instance if app_instance else self)
         self._build_menu()
 
         # 5 秒自动定时轮播各个 AI 工具的额度提示
