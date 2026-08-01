@@ -114,6 +114,17 @@ def main() -> None:
                 except Exception as exc:
                     print(f"提示: 修改 plist 提示 {exc}")
 
+            app_path = dist_dir / "AICreditLimit.app"
+            if app_path.exists():
+                try:
+                    subprocess.run(
+                        ["codesign", "--force", "--deep", "--sign", "-", str(app_path)],
+                        check=True,
+                    )
+                    print("✓ 已重新 ad-hoc 签名 .app，避免修改 Info.plist 后签名失效")
+                except Exception as exc:
+                    print(f"提示: codesign 签名提示 {exc}")
+
         print("\n==========================================")
         print("🎉 打包成功！产物已生成至 dist 目录:")
         if is_mac:

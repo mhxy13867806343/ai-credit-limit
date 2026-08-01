@@ -4,6 +4,7 @@ import os
 import shutil
 import sqlite3
 import subprocess
+from concurrent.futures import ThreadPoolExecutor, wait
 from datetime import datetime
 from pathlib import Path
 
@@ -131,7 +132,29 @@ def scan_apps(
     apps = [*builtin_apps(), *(custom_apps or [])]
     if enabled_app_ids is not None:
         apps = [app for app in apps if app.app_id in enabled_app_ids]
-    return [scan_app(app) for app in apps]
+    if not apps:
+        return []
+
+    results: list[CreditUsage | None] = [None] * len(apps)
+    max_workers = min(6, len(apps))
+    executor = ThreadPoolExecutor(max_workers=max_workers)
+    futures = {
+        executor.submit(scan_app, app): index
+        for index, app in enumerate(apps)
+    }
+    done, pending = wait(futures, timeout=18)
+    for future in done:
+        index = futures[future]
+        results[index] = future.result()
+    for future in pending:
+        future.cancel()
+    executor.shutdown(wait=False, cancel_futures=True)
+
+    return [
+        result
+        for result in results
+        if result is not None
+    ]
 
 
 def scan_app(app: AppDefinition) -> CreditUsage:

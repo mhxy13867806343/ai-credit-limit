@@ -1,6 +1,7 @@
 from __future__ import annotations
 
 import sys
+import time
 from PyQt5.QtCore import QObject, Qt, QThread, QTimer, pyqtSignal
 from PyQt5.QtNetwork import QLocalServer, QLocalSocket
 from PyQt5.QtWidgets import (
@@ -39,6 +40,7 @@ from .ui_usage_card import UsageCard
 from .ui_utils import force_mac_activate, make_app_icon, make_provider_icon, set_dark_palette
 
 SINGLE_INSTANCE_SERVER_NAME = "com.aicreditlimit.single_instance_ipc"
+SCAN_TIMEOUT_MS = 18_000
 
 
 class SingleInstanceHelper(QObject):
@@ -94,6 +96,10 @@ class MainWindow(QMainWindow):
         super().__init__()
         self.custom_apps, self.enabled_app_ids = load_config()
         self._active_threads: set[QThread] = set()
+        self._active_jobs: dict[int, tuple[QThread, ScanWorker]] = {}
+        self._scan_sequence = 0
+        self._current_scan_id: int | None = None
+        self._refresh_deadline = 0.0
         self.scan_running = False
         self.is_force_quitting = False
         self.cards: list[UsageCard] = []
@@ -101,6 +107,9 @@ class MainWindow(QMainWindow):
         self.visible_usages: list[CreditUsage] = []
         self.tab_buttons: list[QPushButton] = []
         self.selected_app_id: str | None = None
+        self._refresh_countdown_timer = QTimer(self)
+        self._refresh_countdown_timer.setInterval(250)
+        self._refresh_countdown_timer.timeout.connect(self._update_refresh_countdown)
 
         self.setWindowTitle(f"{__app_name__} {__version__}")
         self.setWindowIcon(make_app_icon())
@@ -247,25 +256,30 @@ class MainWindow(QMainWindow):
     def refresh_usage(self) -> None:
         if self.scan_running:
             return
+        self._scan_sequence += 1
+        scan_id = self._scan_sequence
+        self._current_scan_id = scan_id
         self.scan_running = True
         self.status_label.setText("")
-        self.refresh_button.setText("刷新中...")
         self.refresh_button.setEnabled(False)
         self.settings_button.setEnabled(False)
+        self._start_refresh_countdown()
 
         worker_thread = QThread(self)
         worker = ScanWorker(self.custom_apps, self.enabled_app_ids)
         worker.moveToThread(worker_thread)
         self._active_threads.add(worker_thread)
+        self._active_jobs[scan_id] = (worker_thread, worker)
 
-        def _cleanup():
+        def _cleanup(scan_id=scan_id):
             if worker_thread in self._active_threads:
                 self._active_threads.remove(worker_thread)
-            self._on_worker_thread_finished()
+            self._active_jobs.pop(scan_id, None)
+            self._on_worker_thread_finished(scan_id)
 
         worker_thread.started.connect(worker.run)
-        worker.finished.connect(self._on_scan_finished)
-        worker.failed.connect(self._on_scan_failed)
+        worker.finished.connect(lambda usages, scan_id=scan_id: self._on_scan_finished(scan_id, usages))
+        worker.failed.connect(lambda message, scan_id=scan_id: self._on_scan_failed(scan_id, message))
         worker.finished.connect(worker_thread.quit)
         worker.failed.connect(worker_thread.quit)
         worker.finished.connect(worker.deleteLater)
@@ -273,6 +287,7 @@ class MainWindow(QMainWindow):
         worker_thread.finished.connect(worker_thread.deleteLater)
         worker_thread.finished.connect(_cleanup)
         worker_thread.start()
+        QTimer.singleShot(SCAN_TIMEOUT_MS, lambda scan_id=scan_id: self._on_scan_timeout(scan_id))
 
     def open_settings(self) -> None:
         dialog = SettingsDialog(self.custom_apps, self.enabled_app_ids, self)
@@ -311,27 +326,60 @@ class MainWindow(QMainWindow):
         self.status_label.setText("已移除")
         self._render_cards([usage for usage in self.current_usages if usage.app_id != app_id])
 
-    def _on_scan_finished(self, usages: list[CreditUsage]) -> None:
+    def _on_scan_finished(self, scan_id: int, usages: list[CreditUsage]) -> None:
+        if scan_id != self._current_scan_id:
+            return
         self.status_label.setText("已更新")
-        self.refresh_button.setText("刷新")
-        self.refresh_button.setEnabled(True)
-        self.settings_button.setEnabled(True)
+        self.scan_running = False
+        self._current_scan_id = None
+        self._finish_refresh_ui()
         save_cached_usage(usages)
         self._render_cards(usages)
 
-    def _on_scan_failed(self, message: str) -> None:
+    def _on_scan_failed(self, scan_id: int, message: str) -> None:
+        if scan_id != self._current_scan_id:
+            return
         self.status_label.setText("刷新受阻")
-        self.refresh_button.setEnabled(True)
-        self.settings_button.setEnabled(True)
+        self.scan_running = False
+        self._current_scan_id = None
+        self._finish_refresh_ui()
         QMessageBox.warning(self, "扫描提醒", f"部分刷新请求受阻:\n{message}\n\n已保留当前卡片与缓存展示。")
 
-    def _on_worker_thread_finished(self) -> None:
+    def _on_scan_timeout(self, scan_id: int) -> None:
+        if scan_id != self._current_scan_id or not self.scan_running:
+            return
         self.scan_running = False
+        self._current_scan_id = None
+        self.status_label.setText("刷新超时，已保留当前数据")
+        self._finish_refresh_ui()
+
+    def _on_worker_thread_finished(self, scan_id: int) -> None:
+        if scan_id != self._current_scan_id:
+            return
+        self.scan_running = False
+        self._current_scan_id = None
+        self._finish_refresh_ui()
+
+    def _start_refresh_countdown(self) -> None:
+        self._refresh_deadline = time.monotonic() + (SCAN_TIMEOUT_MS / 1000)
+        self._refresh_countdown_timer.start()
+        self._update_refresh_countdown()
+
+    def _update_refresh_countdown(self) -> None:
+        if not self.scan_running:
+            self._refresh_countdown_timer.stop()
+            return
+        remaining = max(0, int(self._refresh_deadline - time.monotonic() + 0.999))
+        self.refresh_button.setText(f"刷新中 {remaining}s")
+        if remaining <= 0 and self._current_scan_id is not None:
+            self._on_scan_timeout(self._current_scan_id)
+
+    def _finish_refresh_ui(self) -> None:
+        self._refresh_countdown_timer.stop()
+        self._refresh_deadline = 0.0
         self.refresh_button.setText("刷新")
         self.refresh_button.setEnabled(True)
         self.settings_button.setEnabled(True)
-        self.worker_thread = None
-        self.worker = None
 
     def _on_auto_refresh_settings_changed(self, minutes: int, enabled: bool, next_refresh_time: float | None = None) -> None:
         save_auto_refresh_config(minutes, enabled, next_refresh_time)
