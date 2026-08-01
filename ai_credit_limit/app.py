@@ -129,18 +129,10 @@ class MainWindow(QMainWindow):
 
     def wake_up(self) -> None:
         """Forcefully raise, restore, and focus the main window when triggered from single-instance launch or tray."""
-        self.setWindowFlags(self.windowFlags() | Qt.WindowStaysOnTopHint)
-        self.showNormal()
-        self.raise_()
-        self.activateWindow()
-        app = QApplication.instance()
-        if app:
-            app.setActiveWindow(self)
-        QTimer.singleShot(150, self._restore_window_flags)
-
-    def _restore_window_flags(self) -> None:
-        self.setWindowFlags(self.windowFlags() & ~Qt.WindowStaysOnTopHint)
-        self.showNormal()
+        if self.isMinimized():
+            self.showNormal()
+        else:
+            self.show()
         self.raise_()
         self.activateWindow()
 
@@ -171,60 +163,75 @@ class MainWindow(QMainWindow):
 
     def _build_ui(self) -> None:
         root = QWidget()
-        root.setObjectName("root")
         layout = QVBoxLayout(root)
-        layout.setContentsMargins(24, 20, 24, 22)
-        layout.setSpacing(16)
+        layout.setContentsMargins(20, 16, 20, 16)
+        layout.setSpacing(12)
 
-        header = QHBoxLayout()
-        logo = QLabel()
-        logo.setPixmap(make_app_icon(44).pixmap(44, 44))
-        header.addWidget(logo)
+        header = QFrame()
+        header.setObjectName("headerCard")
+        header_layout = QHBoxLayout(header)
+        header_layout.setContentsMargins(16, 14, 16, 14)
 
-        title_box = QVBoxLayout()
-        title = QLabel("AI Usage Meter")
-        title.setObjectName("appTitle")
-        subtitle = QLabel("Codex 账号额度、本机 Token 活动，以及可选 AI 工具来源。")
-        subtitle.setObjectName("muted")
-        title_box.addWidget(title)
-        title_box.addWidget(subtitle)
+        header_left = QHBoxLayout()
+        header_left.setSpacing(12)
 
-        self.status_label = QLabel("就绪")
+        app_icon = QLabel()
+        app_icon.setPixmap(make_app_icon().pixmap(42, 42))
+        header_left.addWidget(app_icon)
+
+        header_title_layout = QVBoxLayout()
+        header_title_layout.setSpacing(2)
+        title_label = QLabel("AI Usage Meter")
+        title_label.setObjectName("headerTitle")
+        sub_label = QLabel("Codex 账号额度、本机 Token 活动，以及可选 AI 工具来源。")
+        sub_label.setObjectName("headerSubtitle")
+        header_title_layout.addWidget(title_label)
+        header_title_layout.addWidget(sub_label)
+        header_left.addLayout(header_title_layout)
+
+        header_layout.addLayout(header_left)
+        header_layout.addStretch()
+
+        header_right = QHBoxLayout()
+        header_right.setSpacing(10)
+
+        self.status_label = QLabel("")
         self.status_label.setObjectName("statusLabel")
 
         self.refresh_button = QPushButton("刷新")
+        self.refresh_button.setObjectName("refreshBtn")
         self.refresh_button.clicked.connect(self.refresh_usage)
 
         self.settings_button = QPushButton("设置")
+        self.settings_button.setObjectName("settingsBtn")
         self.settings_button.clicked.connect(self.open_settings)
 
-        self.auto_refresh_btn = AutoRefreshButton()
-        self.auto_refresh_btn.refresh_triggered.connect(self.refresh_usage)
+        self.auto_refresh_btn = AutoRefreshButton(self)
         self.auto_refresh_btn.settings_changed.connect(self._on_auto_refresh_settings_changed)
+        self.auto_refresh_btn.refresh_requested.connect(self.refresh_usage)
 
-        header.addLayout(title_box, 1)
-        header.addWidget(self.status_label)
-        header.addWidget(self.refresh_button)
-        header.addWidget(self.settings_button)
-        header.addWidget(self.auto_refresh_btn)
-        layout.addLayout(header)
+        header_right.addWidget(self.status_label)
+        header_right.addWidget(self.refresh_button)
+        header_right.addWidget(self.settings_button)
+        header_right.addWidget(self.auto_refresh_btn)
+        header_layout.addLayout(header_right)
 
-        self.tabs_host = QFrame()
-        self.tabs_host.setObjectName("tabsHost")
-        tabs_layout = QVBoxLayout(self.tabs_host)
-        tabs_layout.setContentsMargins(14, 12, 14, 12)
-        tabs_layout.setSpacing(0)
+        layout.addWidget(header)
 
-        self.tab_bar_widget = QWidget()
-        self.tab_bar_layout = QHBoxLayout(self.tab_bar_widget)
-        self.tab_bar_layout.setContentsMargins(0, 0, 0, 0)
-        self.tab_bar_layout.setSpacing(8)
-        tabs_layout.addWidget(self.tab_bar_widget)
+        tabs_card = QFrame()
+        tabs_card.setObjectName("tabsCard")
+        self.tabs_layout = QHBoxLayout(tabs_card)
+        self.tabs_layout.setContentsMargins(12, 10, 12, 10)
+        self.tabs_layout.setSpacing(8)
+        layout.addWidget(tabs_card)
 
-        layout.addWidget(self.tabs_host)
+        self.cards_area = QScrollArea()
+        self.cards_area.setWidgetResizable(True)
+        self.cards_area.setFrameShape(QFrame.NoFrame)
 
-        self.stack = QStackedWidget()
-        layout.addWidget(self.stack, 1)
+        self.stack_widget = QStackedWidget()
+        self.cards_area.setWidget(self.stack_widget)
+        layout.addWidget(self.cards_area)
 
         footer = QLabel("Codex 额度来自本机 App Server；Token 活动来自本机会话日志。Antigravity 目前未发现可复用的本地额度接口。")
         footer.setObjectName("footer")
@@ -240,7 +247,8 @@ class MainWindow(QMainWindow):
         if self.scan_running:
             return
         self.scan_running = True
-        self.status_label.setText("刷新中...")
+        self.status_label.setText("")
+        self.refresh_button.setText("刷新中...")
         self.refresh_button.setEnabled(False)
         self.settings_button.setEnabled(False)
 
@@ -304,6 +312,7 @@ class MainWindow(QMainWindow):
 
     def _on_scan_finished(self, usages: list[CreditUsage]) -> None:
         self.status_label.setText("已更新")
+        self.refresh_button.setText("刷新")
         self.refresh_button.setEnabled(True)
         self.settings_button.setEnabled(True)
         save_cached_usage(usages)
