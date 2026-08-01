@@ -384,11 +384,15 @@ class MainWindow(QMainWindow):
         return f"{usage.app_name} · 未发现"
 
 
+from .ui_utils import hide_dock_icon_mac, make_app_icon, make_provider_icon, set_dark_palette
+
+
 def main() -> int:
     app = QApplication(sys.argv)
     app.setApplicationName(__app_name__)
     app.setApplicationVersion(__version__)
     app.setQuitOnLastWindowClosed(False)
+    hide_dock_icon_mac()
     set_dark_palette(app)
     window = MainWindow()
     window.show()
