@@ -253,6 +253,9 @@ class MainWindow(QMainWindow):
         self.refresh_button.setEnabled(False)
         self.settings_button.setEnabled(False)
 
+        # 8秒绝对超时防卡死保护
+        QTimer.singleShot(8000, self._on_scan_timeout)
+
         worker_thread = QThread(self)
         worker = ScanWorker(self.custom_apps, self.enabled_app_ids)
         worker.moveToThread(worker_thread)
@@ -273,6 +276,14 @@ class MainWindow(QMainWindow):
         worker_thread.finished.connect(worker_thread.deleteLater)
         worker_thread.finished.connect(_cleanup)
         worker_thread.start()
+
+    def _on_scan_timeout(self) -> None:
+        if self.scan_running:
+            self.scan_running = False
+            self.status_label.setText("同步超时")
+            self.refresh_button.setText("刷新")
+            self.refresh_button.setEnabled(True)
+            self.settings_button.setEnabled(True)
 
     def open_settings(self) -> None:
         dialog = SettingsDialog(self.custom_apps, self.enabled_app_ids, self)

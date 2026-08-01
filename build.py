@@ -32,6 +32,13 @@ def main() -> None:
     icon_ico = project_root / "assets" / "icon.ico"
     icon_png = project_root / "assets" / "icon.png"
 
+    is_mac = sys.platform == "darwin"
+    is_win = sys.platform == "win32"
+
+    # 打包前清理已在后台运行的旧版本内存进程，避免资源覆写锁
+    if is_mac:
+        subprocess.run(["killall", "-9", "AICreditLimit"], stderr=subprocess.DEVNULL, stdout=subprocess.DEVNULL)
+
     cmd = [
         sys.executable,
         "-m",
