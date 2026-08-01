@@ -36,7 +36,7 @@ from .ui_auto_refresh import AutoRefreshButton
 from .ui_dialogs import SettingsDialog
 from .ui_tray import SystemTrayManager
 from .ui_usage_card import UsageCard
-from .ui_utils import make_app_icon, make_provider_icon, set_dark_palette
+from .ui_utils import force_mac_activate, make_app_icon, make_provider_icon, set_dark_palette
 
 SINGLE_INSTANCE_SERVER_NAME = "com.aicreditlimit.single_instance_ipc"
 
@@ -135,6 +135,7 @@ class MainWindow(QMainWindow):
             self.show()
         self.raise_()
         self.activateWindow()
+        force_mac_activate()
 
     def toggle_visibility(self) -> None:
         if self.isVisible() and not self.isMinimized():

@@ -82,6 +82,34 @@ def set_dark_palette(app: QApplication) -> None:
     app.setPalette(palette)
 
 
-def set_dock_icon_visible(visible: bool = True) -> None:
-    """Safe no-op placeholder replacing unsafe ctypes Cocoa messaging."""
+def set_dock_icon_visible(visible: bool) -> None:
     pass
+
+
+def force_mac_activate() -> None:
+    try:
+        import ctypes
+        import platform
+
+        if platform.system() == "Darwin":
+            cocoa = ctypes.cdll.LoadLibrary("/System/Library/Frameworks/Cocoa.framework/Cocoa")
+            objc_getClass = cocoa.objc_getClass
+            objc_getClass.argtypes = [ctypes.c_char_p]
+            objc_getClass.restype = ctypes.c_void_p
+
+            sel_registerName = cocoa.sel_registerName
+            sel_registerName.argtypes = [ctypes.c_char_p]
+            sel_registerName.restype = ctypes.c_void_p
+
+            ns_app_cls = objc_getClass(b"NSApplication")
+            sel_shared = sel_registerName(b"sharedApplication")
+
+            get_ns_app = ctypes.CFUNCTYPE(ctypes.c_void_p, ctypes.c_void_p, ctypes.c_void_p)(("objc_msgSend", cocoa))
+            ns_app = get_ns_app(ns_app_cls, sel_shared)
+
+            if ns_app:
+                activate_app = ctypes.CFUNCTYPE(ctypes.c_void_p, ctypes.c_void_p, ctypes.c_void_p, ctypes.c_bool)(("objc_msgSend", cocoa))
+                sel_activate = sel_registerName(b"activateIgnoringOtherApps:")
+                activate_app(ns_app, sel_activate, True)
+    except Exception:
+        pass
