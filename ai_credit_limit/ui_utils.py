@@ -82,8 +82,8 @@ def set_dark_palette(app: QApplication) -> None:
     app.setPalette(palette)
 
 
-def hide_dock_icon_mac() -> None:
-    """Hide macOS Dock icon so the app operates solely as a Menu Bar Status Bar accessory app."""
+def set_dock_icon_visible(visible: bool = True) -> None:
+    """Set macOS Dock icon visibility. 0 = Regular (visible in Dock & Cmd+Tab), 1 = Accessory (hidden)."""
     import ctypes
     import platform
 
@@ -100,7 +100,9 @@ def hide_dock_icon_mac() -> None:
         setActivationPolicy = objc.sel_registerName(b"setActivationPolicy:")
 
         app_ptr = objc.objc_msgSend(NSApplication, sharedApplication)
-        # 1 = NSApplicationActivationPolicyAccessory (不在 Dock 栏占位，做纯 Menu Bar 菜单栏应用)
-        objc.objc_msgSend(app_ptr, setActivationPolicy, ctypes.c_long(1))
+        # 0 = NSApplicationActivationPolicyRegular (常驻 Dock 栏与 Cmd+Tab 界面)
+        # 1 = NSApplicationActivationPolicyAccessory (仅菜单栏隐藏 Dock)
+        policy = 0 if visible else 1
+        objc.objc_msgSend(app_ptr, setActivationPolicy, ctypes.c_long(policy))
     except Exception:
         pass
