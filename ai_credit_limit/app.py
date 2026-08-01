@@ -30,6 +30,7 @@ from .models import AppDefinition, CreditUsage
 from .theme import MAIN_WINDOW_STYLE
 from .ui_auto_refresh import AutoRefreshButton
 from .ui_dialogs import SettingsDialog
+from .ui_tray import SystemTrayManager
 from .ui_usage_card import UsageCard
 from .ui_utils import make_app_icon, make_provider_icon, set_dark_palette
 
@@ -65,8 +66,18 @@ class MainWindow(QMainWindow):
 
         self.setWindowTitle(f"{__app_name__} {__version__}")
         self.setWindowIcon(make_app_icon())
+        self.setMinimumSize(540, 480)
         self.resize(960, 700)
         self._build_ui()
+
+        # 系统托盘与菜单栏轮播组件
+        self.tray_manager = SystemTrayManager(self)
+        self.tray_manager.setup()
+        self.tray_manager.toggle_window_requested.connect(self.toggle_visibility)
+        self.tray_manager.refresh_requested.connect(self.refresh_usage)
+        self.tray_manager.settings_requested.connect(self.open_settings)
+        self.tray_manager.quit_requested.connect(QApplication.instance().quit)
+
         ar_cfg = load_auto_refresh_config()
         self.auto_refresh_btn.load_settings(ar_cfg["minutes"], ar_cfg["enabled"], ar_cfg.get("next_refresh_time"))
 
@@ -77,6 +88,18 @@ class MainWindow(QMainWindow):
             self._render_cards(cached_usages)
 
         self.refresh_usage()
+
+    def toggle_visibility(self) -> None:
+        if self.isVisible() and not self.isMinimized():
+            self.hide()
+        else:
+            self.showNormal()
+            self.activateWindow()
+
+    def closeEvent(self, event) -> None:
+        # 点 X 关闭按钮时隐藏到 macOS 菜单栏 / Windows 托盘栏，不断绝后台自动刷新
+        event.ignore()
+        self.hide()
 
     def _build_ui(self) -> None:
         root = QWidget()
@@ -264,6 +287,8 @@ class MainWindow(QMainWindow):
             self.stack.addWidget(page)
         self.tab_bar_layout.addStretch(1)
         self._select_tab(target_index)
+        if hasattr(self, "tray_manager"):
+            self.tray_manager.update_usages(usages)
 
     def _clear_cards(self) -> None:
         while self.stack.count():

@@ -20,6 +20,7 @@
 ## ✨ 核心特性
 
 - 🤖 **自动动态检测**：自动搜寻与识别本机安装的 AI IDE 与 AI 辅助工具，无需复杂手动配置。
+- 🖥 **macOS 菜单栏 / Windows 托盘**：常驻系统托盘，5 秒轮播展示各大 AI 工具动态，鼠标悬停即刻预览全局配额，无需频繁弹窗。
 - ⚡️ **秒开本地缓存**：内置本地持久化缓存机制，打开应用 0.01 秒瞬间加载上次配额面板，杜绝启动白屏等待。
 - 📊 **多维度额度可视化**：同时展示 **5小时额度 (5h)** 与 **周额度 (Weekly)**，每项配额配备独属的彩虹动态渐变进度条。
 - ⏱ **精准倒计时自动刷新**：支持 5分钟至 24小时 自动刷新周期，基于目标时间戳精准倒数，重启或手动刷新不重置既定周期。
@@ -36,6 +37,28 @@
 | **Antigravity** | DevTools Models & Usage 调试通道 | 自动同步 Gemini & Claude/GPT 周额度与 5小时额度 |
 | **Claude Code** | 本地 `~/.claude/projects` 会话日志 | 统计今日与近 90 天输入、缓存、输出 Token 消耗 |
 | **WorkBuddy** | `~/.workbuddy/workbuddy.db` SQLite 数据 | 同步最新会话上下文容量比例与 Session Token 活动 |
+
+---
+
+## 📦 应用打包构建指南 (macOS / Windows)
+
+项目内置自动化打包脚本 `build.py`：
+
+### macOS 独立应用打包 (`.app`)
+
+```bash
+python3 build.py
+```
+打包成功后，产物位于 `dist/AICreditLimit.app`，拖入 `/Applications` 文件夹即可双击启动。软件将自动嵌入 **macOS 右上角菜单栏**。
+
+### Windows 独立应用打包 (`.exe`)
+
+在 Windows 命令提示符或 PowerShell 中执行：
+```cmd
+pip install -r requirements.txt
+python build.py
+```
+打包成功后，产物位于 `dist/AICreditLimit/AICreditLimit.exe`，启动后常驻 **Windows 右下角任务栏托盘**。
 
 ---
 
