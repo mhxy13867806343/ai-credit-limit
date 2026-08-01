@@ -395,5 +395,7 @@ def main() -> int:
     hide_dock_icon_mac()
     set_dark_palette(app)
     window = MainWindow()
-    window.show()
+    window.showNormal()
+    window.raise_()
+    window.activateWindow()
     return app.exec_()

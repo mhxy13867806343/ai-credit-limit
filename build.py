@@ -39,7 +39,7 @@ def main() -> None:
         "--noconfirm",
         "--clean",
         "--windowed",  # GUI 应用，无终端控制台弹窗
-        "--onefile",   # 单文件打包模式，解决双击工作目录缺失引发的闪退
+        "--onedir",    # macOS 标准 App Bundle 打包模式
         "--name=AICreditLimit",
         f"--paths={project_root}",
         f"--distpath={dist_dir}",
