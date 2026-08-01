@@ -349,6 +349,7 @@ def main() -> int:
     app = QApplication(sys.argv)
     app.setApplicationName(__app_name__)
     app.setApplicationVersion(__version__)
+    app.setQuitOnLastWindowClosed(False)
     set_dark_palette(app)
     window = MainWindow()
     window.show()
