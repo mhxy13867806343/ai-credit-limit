@@ -327,6 +327,9 @@ class MainWindow(QMainWindow):
 
     def _on_worker_thread_finished(self) -> None:
         self.scan_running = False
+        self.refresh_button.setText("刷新")
+        self.refresh_button.setEnabled(True)
+        self.settings_button.setEnabled(True)
         self.worker_thread = None
         self.worker = None
 

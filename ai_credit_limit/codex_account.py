@@ -20,7 +20,7 @@ class CodexAccountError(RuntimeError):
     pass
 
 
-def fetch_codex_account_usage(timeout: float = 20.0) -> CodexAccountUsage:
+def fetch_codex_account_usage(timeout: float = 4.0) -> CodexAccountUsage:
     executable = locate_codex_executable()
     if not executable:
         raise CodexAccountError("未找到支持 app-server 的 Codex CLI")
