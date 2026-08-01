@@ -41,9 +41,31 @@ def main() -> None:
         "--windowed",  # GUI 应用，无终端控制台弹窗
         "--onefile",   # 单文件打包模式，解决双击工作目录缺失引发的闪退
         "--name=AICreditLimit",
+        f"--paths={project_root}",
         f"--distpath={dist_dir}",
         f"--workpath={build_dir}",
     ]
+
+    hidden_imports = [
+        "ai_credit_limit",
+        "ai_credit_limit.app",
+        "ai_credit_limit.config",
+        "ai_credit_limit.detectors",
+        "ai_credit_limit.models",
+        "ai_credit_limit.parsers",
+        "ai_credit_limit.theme",
+        "ai_credit_limit.ui_tray",
+        "ai_credit_limit.ui_utils",
+        "ai_credit_limit.ui_auto_refresh",
+        "ai_credit_limit.ui_usage_card",
+        "ai_credit_limit.ui_dialogs",
+        "ai_credit_limit.codex_account",
+        "ai_credit_limit.codex_sessions",
+        "ai_credit_limit.antigravity_account",
+        "ai_credit_limit.claude_sessions",
+    ]
+    for sub in hidden_imports:
+        cmd.append(f"--hidden-import={sub}")
 
     is_mac = platform.system() == "Darwin"
     is_win = platform.system() == "Windows"
