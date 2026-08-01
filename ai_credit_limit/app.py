@@ -209,7 +209,7 @@ class MainWindow(QMainWindow):
 
         self.auto_refresh_btn = AutoRefreshButton(self)
         self.auto_refresh_btn.settings_changed.connect(self._on_auto_refresh_settings_changed)
-        self.auto_refresh_btn.refresh_requested.connect(self.refresh_usage)
+        self.auto_refresh_btn.refresh_triggered.connect(self.refresh_usage)
 
         header_right.addWidget(self.status_label)
         header_right.addWidget(self.refresh_button)
@@ -360,7 +360,7 @@ class MainWindow(QMainWindow):
             tab_button.setIcon(make_provider_icon(usage.app_name, usage.app_id, 18))
             tab_button.clicked.connect(lambda checked=False, idx=index: self._select_tab(idx))
             self.tab_buttons.append(tab_button)
-            self.tab_bar_layout.insertWidget(self.tab_bar_layout.count(), tab_button)
+            self.tabs_layout.insertWidget(self.tabs_layout.count(), tab_button)
 
             page = QWidget()
             page_layout = QVBoxLayout(page)
@@ -380,19 +380,19 @@ class MainWindow(QMainWindow):
             host_layout.addStretch(1)
             scroll.setWidget(host)
             page_layout.addWidget(scroll)
-            self.stack.addWidget(page)
-        self.tab_bar_layout.addStretch(1)
+            self.stack_widget.addWidget(page)
+        self.tabs_layout.addStretch(1)
         self._select_tab(target_index)
         if hasattr(self, "tray_manager"):
             self.tray_manager.update_usages(usages)
 
     def _clear_cards(self) -> None:
-        while self.stack.count():
-            page = self.stack.widget(0)
-            self.stack.removeWidget(page)
+        while self.stack_widget.count():
+            page = self.stack_widget.widget(0)
+            self.stack_widget.removeWidget(page)
             page.deleteLater()
-        while self.tab_bar_layout.count():
-            item = self.tab_bar_layout.takeAt(0)
+        while self.tabs_layout.count():
+            item = self.tabs_layout.takeAt(0)
             widget = item.widget()
             if widget:
                 widget.deleteLater()
@@ -406,7 +406,7 @@ class MainWindow(QMainWindow):
         if not self.tab_buttons:
             return
         index = max(0, min(index, len(self.tab_buttons) - 1))
-        self.stack.setCurrentIndex(index)
+        self.stack_widget.setCurrentIndex(index)
         for button_index, button in enumerate(self.tab_buttons):
             button.setChecked(button_index == index)
         if index < len(self.visible_usages):
