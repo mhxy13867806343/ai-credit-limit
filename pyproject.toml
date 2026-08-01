@@ -1,0 +1,14 @@
+[project]
+name = "ai-credit-limit"
+version = "0.1.0"
+description = "Local AI quota usage viewer built with Python 3.11 and PyQt5."
+requires-python = ">=3.11"
+dependencies = [
+    "PyQt5>=5.15,<6",
+]
+
+[project.scripts]
+ai-credit-limit = "ai_credit_limit.app:main"
+
+[tool.setuptools.packages.find]
+include = ["ai_credit_limit*"]
