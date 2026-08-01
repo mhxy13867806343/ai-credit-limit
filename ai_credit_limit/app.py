@@ -1,7 +1,7 @@
 from __future__ import annotations
 
 import sys
-from PyQt5.QtCore import QEvent, QObject, Qt, QThread, pyqtSignal
+from PyQt5.QtCore import QEvent, QObject, Qt, QThread, QTimer, pyqtSignal
 from PyQt5.QtNetwork import QLocalServer, QLocalSocket
 from PyQt5.QtWidgets import (
     QApplication,
@@ -87,7 +87,9 @@ class SingleInstanceHelper(QObject):
         if self.server:
             client = self.server.nextPendingConnection()
             if client:
-                client.readyRead.connect(self.wake_up_requested.emit)
+                client.readAll()
+                self.wake_up_requested.emit()
+                client.disconnectFromServer()
 
 
 class ScanWorker(QObject):
@@ -146,6 +148,17 @@ class MainWindow(QMainWindow):
 
     def wake_up(self) -> None:
         """Forcefully raise, restore, and focus the main window when triggered from single-instance launch or tray."""
+        self.setWindowFlags(self.windowFlags() | Qt.WindowStaysOnTopHint)
+        self.showNormal()
+        self.raise_()
+        self.activateWindow()
+        app = QApplication.instance()
+        if app:
+            app.setActiveWindow(self)
+        QTimer.singleShot(150, self._restore_window_flags)
+
+    def _restore_window_flags(self) -> None:
+        self.setWindowFlags(self.windowFlags() & ~Qt.WindowStaysOnTopHint)
         self.showNormal()
         self.raise_()
         self.activateWindow()
