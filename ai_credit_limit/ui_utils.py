@@ -83,26 +83,5 @@ def set_dark_palette(app: QApplication) -> None:
 
 
 def set_dock_icon_visible(visible: bool = True) -> None:
-    """Set macOS Dock icon visibility. 0 = Regular (visible in Dock & Cmd+Tab), 1 = Accessory (hidden)."""
-    import ctypes
-    import platform
-
-    if platform.system() != "Darwin":
-        return
-    try:
-        objc = ctypes.cdll.LoadLibrary("libobjc.dylib")
-        objc.objc_getClass.restype = ctypes.c_void_p
-        objc.sel_registerName.restype = ctypes.c_void_p
-        objc.objc_msgSend.restype = ctypes.c_void_p
-
-        NSApplication = objc.objc_getClass(b"NSApplication")
-        sharedApplication = objc.sel_registerName(b"sharedApplication")
-        setActivationPolicy = objc.sel_registerName(b"setActivationPolicy:")
-
-        app_ptr = objc.objc_msgSend(NSApplication, sharedApplication)
-        # 0 = NSApplicationActivationPolicyRegular (常驻 Dock 栏与 Cmd+Tab 界面)
-        # 1 = NSApplicationActivationPolicyAccessory (仅菜单栏隐藏 Dock)
-        policy = 0 if visible else 1
-        objc.objc_msgSend(app_ptr, setActivationPolicy, ctypes.c_long(policy))
-    except Exception:
-        pass
+    """Safe no-op placeholder replacing unsafe ctypes Cocoa messaging."""
+    pass

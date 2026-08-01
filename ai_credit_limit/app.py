@@ -384,7 +384,7 @@ class MainWindow(QMainWindow):
         return f"{usage.app_name} · 未发现"
 
 
-from .ui_utils import make_app_icon, make_provider_icon, set_dark_palette, set_dock_icon_visible
+from .ui_utils import make_app_icon, make_provider_icon, set_dark_palette
 
 
 def main() -> int:
@@ -392,7 +392,6 @@ def main() -> int:
     app.setApplicationName(__app_name__)
     app.setApplicationVersion(__version__)
     app.setQuitOnLastWindowClosed(False)
-    set_dock_icon_visible(True)
     set_dark_palette(app)
     window = MainWindow()
     window.showNormal()
