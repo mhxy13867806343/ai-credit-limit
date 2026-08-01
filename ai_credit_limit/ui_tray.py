@@ -76,7 +76,7 @@ class SystemTrayManager(QObject):
 
         self.tray_icon.setContextMenu(menu)
 
-    def show(() -> None:
+    def show(self) -> None:
         pass
 
     def setup(self) -> None:

@@ -70,6 +70,9 @@ def main() -> None:
     is_mac = platform.system() == "Darwin"
     is_win = platform.system() == "Windows"
 
+    sep = ";" if is_win else ":"
+    cmd.append(f"--add-data={project_root / 'ai_credit_limit'}{sep}ai_credit_limit")
+
     if is_mac:
         print("\n🍎 开始构建 macOS .app bundle...")
         cmd.append("--osx-bundle-identifier=com.aicreditlimit.app")
