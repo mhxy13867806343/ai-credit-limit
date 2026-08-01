@@ -1,7 +1,7 @@
 from __future__ import annotations
 
 import sys
-from PyQt5.QtCore import QEvent, QObject, Qt, QThread, QTimer, pyqtSignal
+from PyQt5.QtCore import QObject, Qt, QThread, QTimer, pyqtSignal
 from PyQt5.QtNetwork import QLocalServer, QLocalSocket
 from PyQt5.QtWidgets import (
     QApplication,
@@ -17,25 +17,6 @@ from PyQt5.QtWidgets import (
     QVBoxLayout,
     QWidget,
 )
-
-
-class ProtectionApplication(QApplication):
-    """Intersects system Quit signals (e.g., Dock context menu Quit / Cmd+Q) to keep tray icon alive."""
-
-    def event(self, e) -> bool:
-        if e.type() == QEvent.Quit:
-            main_win = None
-            for widget in self.topLevelWidgets():
-                if isinstance(widget, QMainWindow):
-                    main_win = widget
-                    break
-            if main_win and not getattr(main_win, "is_force_quitting", False):
-                e.ignore()
-                main_win.hide()
-                if hasattr(main_win, "tray_manager") and main_win.tray_manager and main_win.tray_manager.tray_icon:
-                    main_win.tray_manager.tray_icon.show()
-                return True
-        return super().event(e)
 
 from . import __app_name__, __version__
 from .config import (
@@ -443,7 +424,7 @@ from .ui_utils import make_app_icon, make_provider_icon, set_dark_palette
 
 
 def main() -> int:
-    app = ProtectionApplication(sys.argv)
+    app = QApplication(sys.argv)
     app.setApplicationName(__app_name__)
     app.setApplicationVersion(__version__)
     app.setQuitOnLastWindowClosed(False)
