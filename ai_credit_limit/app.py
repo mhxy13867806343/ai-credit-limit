@@ -2,6 +2,7 @@ from __future__ import annotations
 
 import sys
 from PyQt5.QtCore import QObject, Qt, QThread, pyqtSignal
+from PyQt5.QtNetwork import QLocalServer, QLocalSocket
 from PyQt5.QtWidgets import (
     QApplication,
     QCheckBox,
@@ -37,6 +38,38 @@ from .ui_tray import SystemTrayManager
 from .ui_usage_card import UsageCard
 from .ui_utils import make_app_icon, make_provider_icon, set_dark_palette
 
+SINGLE_INSTANCE_SERVER_NAME = "com.aicreditlimit.single_instance_ipc"
+
+
+class SingleInstanceHelper(QObject):
+    wake_up_requested = pyqtSignal()
+
+    def __init__(self, parent: QObject | None = None) -> None:
+        super().__init__(parent)
+        self.server: QLocalServer | None = None
+
+    def try_wake_existing_instance(self) -> bool:
+        socket = QLocalSocket()
+        socket.connectToServer(SINGLE_INSTANCE_SERVER_NAME)
+        if socket.waitForConnected(600):
+            socket.write(b"WAKEUP")
+            socket.waitForBytesWritten(1000)
+            socket.disconnectFromServer()
+            return True
+        return False
+
+    def listen(self) -> None:
+        QLocalServer.removeServer(SINGLE_INSTANCE_SERVER_NAME)
+        self.server = QLocalServer(self)
+        self.server.listen(SINGLE_INSTANCE_SERVER_NAME)
+        self.server.newConnection.connect(self._on_connection)
+
+    def _on_connection(self) -> None:
+        if self.server:
+            client = self.server.nextPendingConnection()
+            if client:
+                client.readyRead.connect(self.wake_up_requested.emit)
+
 
 class ScanWorker(QObject):
     finished = pyqtSignal(list)
@@ -58,8 +91,7 @@ class MainWindow(QMainWindow):
     def __init__(self) -> None:
         super().__init__()
         self.custom_apps, self.enabled_app_ids = load_config()
-        self.worker_thread: QThread | None = None
-        self.worker: ScanWorker | None = None
+        self._active_threads: set[QThread] = set()
         self.scan_running = False
         self.cards: list[UsageCard] = []
         self.current_usages: list[CreditUsage] = []
@@ -92,12 +124,17 @@ class MainWindow(QMainWindow):
 
         self.refresh_usage()
 
+    def wake_up(self) -> None:
+        """Forcefully raise, restore, and focus the main window when triggered from single-instance launch or tray."""
+        self.showNormal()
+        self.raise_()
+        self.activateWindow()
+
     def toggle_visibility(self) -> None:
         if self.isVisible() and not self.isMinimized():
             self.hide()
         else:
-            self.showNormal()
-            self.activateWindow()
+            self.wake_up()
 
     def closeEvent(self, event) -> None:
         # 点击主窗口关闭按钮 (X) 时，仅隐藏主界面，保证右上角菜单栏托盘保持后台常驻监控与轮播
@@ -192,19 +229,26 @@ class MainWindow(QMainWindow):
         self.refresh_button.setEnabled(False)
         self.settings_button.setEnabled(False)
 
-        self.worker_thread = QThread(self)
-        self.worker = ScanWorker(self.custom_apps, self.enabled_app_ids)
-        self.worker.moveToThread(self.worker_thread)
-        self.worker_thread.started.connect(self.worker.run)
-        self.worker.finished.connect(self._on_scan_finished)
-        self.worker.failed.connect(self._on_scan_failed)
-        self.worker.finished.connect(self.worker_thread.quit)
-        self.worker.failed.connect(self.worker_thread.quit)
-        self.worker.finished.connect(self.worker.deleteLater)
-        self.worker.failed.connect(self.worker.deleteLater)
-        self.worker_thread.finished.connect(self.worker_thread.deleteLater)
-        self.worker_thread.finished.connect(self._on_worker_thread_finished)
-        self.worker_thread.start()
+        worker_thread = QThread(self)
+        worker = ScanWorker(self.custom_apps, self.enabled_app_ids)
+        worker.moveToThread(worker_thread)
+        self._active_threads.add(worker_thread)
+
+        def _cleanup():
+            if worker_thread in self._active_threads:
+                self._active_threads.remove(worker_thread)
+            self._on_worker_thread_finished()
+
+        worker_thread.started.connect(worker.run)
+        worker.finished.connect(self._on_scan_finished)
+        worker.failed.connect(self._on_scan_failed)
+        worker.finished.connect(worker_thread.quit)
+        worker.failed.connect(worker_thread.quit)
+        worker.finished.connect(worker.deleteLater)
+        worker.failed.connect(worker.deleteLater)
+        worker_thread.finished.connect(worker_thread.deleteLater)
+        worker_thread.finished.connect(_cleanup)
+        worker_thread.start()
 
     def open_settings(self) -> None:
         dialog = SettingsDialog(self.custom_apps, self.enabled_app_ids, self)
@@ -370,8 +414,14 @@ def main() -> int:
     app.setApplicationVersion(__version__)
     app.setQuitOnLastWindowClosed(False)
     set_dark_palette(app)
+
+    helper = SingleInstanceHelper(app)
+    if helper.try_wake_existing_instance():
+        return 0
+
     window = MainWindow()
-    window.showNormal()
-    window.raise_()
-    window.activateWindow()
+    helper.wake_up_requested.connect(window.wake_up)
+    helper.listen()
+
+    window.wake_up()
     return app.exec_()
