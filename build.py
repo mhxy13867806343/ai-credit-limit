@@ -39,6 +39,7 @@ def main() -> None:
         "--noconfirm",
         "--clean",
         "--windowed",  # GUI 应用，无终端控制台弹窗
+        "--onefile",   # 单文件打包模式，解决双击工作目录缺失引发的闪退
         "--name=AICreditLimit",
         f"--distpath={dist_dir}",
         f"--workpath={build_dir}",
