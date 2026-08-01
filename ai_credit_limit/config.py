@@ -89,6 +89,30 @@ def save_auto_refresh_config(minutes: int, enabled: bool, next_refresh_time: flo
     CONFIG_FILE.write_text(json.dumps(payload, ensure_ascii=False, indent=2), encoding="utf-8")
 
 
+def load_close_preference() -> tuple[str | None, bool]:
+    """Return close window preference: (action: 'minimize' | 'exit' | None, remember: bool)."""
+    payload = _load_payload()
+    pref = payload.get("close_preference")
+    if not isinstance(pref, dict):
+        return None, False
+    action = pref.get("action")
+    remember = bool(pref.get("remember", False))
+    if action not in ("minimize", "exit"):
+        action = None
+    return action, remember
+
+
+def save_close_preference(action: str, remember: bool) -> None:
+    """Save user choice for closing window."""
+    APP_SUPPORT_DIR.mkdir(parents=True, exist_ok=True)
+    payload = _load_payload()
+    payload["close_preference"] = {
+        "action": action,
+        "remember": remember,
+    }
+    CONFIG_FILE.write_text(json.dumps(payload, ensure_ascii=False, indent=2), encoding="utf-8")
+
+
 def make_custom_app(name: str, executable_paths: list[str], search_paths: list[str]) -> AppDefinition:
     return AppDefinition(
         app_id=f"custom-{uuid.uuid4().hex}",

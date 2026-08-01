@@ -4,6 +4,7 @@ import sys
 from PyQt5.QtCore import QObject, Qt, QThread, pyqtSignal
 from PyQt5.QtWidgets import (
     QApplication,
+    QCheckBox,
     QFrame,
     QHBoxLayout,
     QLabel,
@@ -20,9 +21,11 @@ from . import __app_name__, __version__
 from .config import (
     load_auto_refresh_config,
     load_cached_usage,
+    load_close_preference,
     load_config,
     save_auto_refresh_config,
     save_cached_usage,
+    save_close_preference,
     save_config,
 )
 from .detectors import builtin_apps, scan_apps
@@ -97,9 +100,45 @@ class MainWindow(QMainWindow):
             self.activateWindow()
 
     def closeEvent(self, event) -> None:
-        # 点 X 关闭按钮时隐藏到 macOS 菜单栏 / Windows 托盘栏，不断绝后台自动刷新
-        event.ignore()
-        self.hide()
+        pref_action, remember = load_close_preference()
+        if remember and pref_action in ("minimize", "exit"):
+            if pref_action == "minimize":
+                event.ignore()
+                self.hide()
+            else:
+                event.accept()
+                QApplication.instance().quit()
+            return
+
+        box = QMessageBox(self)
+        box.setWindowTitle("关闭应用提示")
+        box.setText("您点击了关闭窗口按钮，请选择您希望执行的操作：")
+        box.setIcon(QMessageBox.Question)
+
+        btn_minimize = box.addButton("最小化到系统托盘", QMessageBox.AcceptRole)
+        btn_exit = box.addButton("彻底退出应用", QMessageBox.DestructiveRole)
+        btn_cancel = box.addButton("取消", QMessageBox.RejectRole)
+
+        checkbox = QCheckBox("记住我的选择，以后不再提示", box)
+        box.setCheckBox(checkbox)
+
+        box.exec_()
+
+        clicked = box.clickedButton()
+        remember_choice = checkbox.isChecked()
+
+        if clicked == btn_minimize:
+            if remember_choice:
+                save_close_preference("minimize", True)
+            event.ignore()
+            self.hide()
+        elif clicked == btn_exit:
+            if remember_choice:
+                save_close_preference("exit", True)
+            event.accept()
+            QApplication.instance().quit()
+        else:
+            event.ignore()
 
     def _build_ui(self) -> None:
         root = QWidget()
