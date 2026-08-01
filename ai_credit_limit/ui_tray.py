@@ -58,7 +58,7 @@ class SystemTrayManager(QObject):
             }
         """)
 
-        self.toggle_action = QAction("显示/隐藏主界面", self)
+        self.toggle_action = QAction("🖥️ 显示/隐藏主界面", self)
         self.toggle_action.triggered.connect(self.toggle_window_requested.emit)
 
         self.refresh_action = QAction("🔄 立即刷新配额", self)
@@ -67,13 +67,17 @@ class SystemTrayManager(QObject):
         self.settings_action = QAction("⚙️ AI 工具设置", self)
         self.settings_action.triggered.connect(self.settings_requested.emit)
 
-        self.quit_action = QAction("❌ 退出应用", self)
+        self.hide_action = QAction("🙈 关闭主界面 (保持右上角轮播)", self)
+        self.hide_action.triggered.connect(self.toggle_window_requested.emit)
+
+        self.quit_action = QAction("❌ 彻底退出程序", self)
         self.quit_action.triggered.connect(self.quit_requested.emit)
 
         menu.addAction(self.toggle_action)
         menu.addAction(self.refresh_action)
         menu.addAction(self.settings_action)
         menu.addSeparator()
+        menu.addAction(self.hide_action)
         menu.addAction(self.quit_action)
 
         self.tray_icon.setContextMenu(menu)

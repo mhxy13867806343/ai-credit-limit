@@ -79,7 +79,7 @@ class MainWindow(QMainWindow):
         self.tray_manager.toggle_window_requested.connect(self.toggle_visibility)
         self.tray_manager.refresh_requested.connect(self.refresh_usage)
         self.tray_manager.settings_requested.connect(self.open_settings)
-        self.tray_manager.quit_requested.connect(QApplication.instance().quit)
+        self.tray_manager.quit_requested.connect(self.confirm_quit)
 
         ar_cfg = load_auto_refresh_config()
         self.auto_refresh_btn.load_settings(ar_cfg["minutes"], ar_cfg["enabled"], ar_cfg.get("next_refresh_time"))
@@ -105,6 +105,17 @@ class MainWindow(QMainWindow):
         self.hide()
         if hasattr(self, "tray_manager") and self.tray_manager and self.tray_manager.tray_icon:
             self.tray_manager.tray_icon.show()
+
+    def confirm_quit(self) -> None:
+        reply = QMessageBox.question(
+            self,
+            "彻底退出确认",
+            "确定要彻底退出应用吗？\n\n彻底退出后，右上角菜单栏将停止轮播与额度监控。\n若仅需隐藏主界面并保持右上角监控，请直接点击“取消”或窗口关闭按钮 (X)。",
+            QMessageBox.Yes | QMessageBox.No,
+            QMessageBox.No,
+        )
+        if reply == QMessageBox.Yes:
+            QApplication.instance().quit()
 
     def _build_ui(self) -> None:
         root = QWidget()
